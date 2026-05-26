@@ -15,9 +15,9 @@ This package sits above [`@shapeshift-labs/frontier-realtime`](https://www.npmjs
 - [`@shapeshift-labs/frontier`](https://www.npmjs.com/package/@shapeshift-labs/frontier): core JSON diff/apply primitives for application state and snapshot patches.
 - [`@shapeshift-labs/frontier-logging`](https://www.npmjs.com/package/@shapeshift-labs/frontier-logging): optional diagnostics for room ticks, network latency, and rejected commands.
 
-Planned companion repository:
+Companion repository:
 
-- [`@shapeshift-labs/frontier-game`](https://github.com/siliconjungle/-shapeshift-labs-frontier-game): planned game-facing entity, component, player, room, ownership, and replication vocabulary above realtime.
+- [`@shapeshift-labs/frontier-game`](https://github.com/siliconjungle/-shapeshift-labs-frontier-game): game-facing entity, component, player, room, ownership, spatial interest, and replication vocabulary above realtime.
 
 ## Install
 
@@ -39,6 +39,7 @@ const client = createRealtimeWebSocketClient({
   url: 'wss://example.com/realtime',
   roomId: 'arena-1',
   clientId: 'player-a',
+  frameEncoding: 'binary',
   onMessage(message) {
     if (message.type === 'snapshot') {
       console.log(message.snapshot);
@@ -89,15 +90,15 @@ import {
 
 ### Wire Frames
 
-`encodeRealtimeWebSocketFrame(message, options)` and `decodeRealtimeWebSocketFrame(data, options)` encode and decode Frontier realtime client/server message envelopes. The default transport frame is JSON text; `frameEncoding: "binary"` sends UTF-8 bytes.
+`encodeRealtimeWebSocketFrame(message, options)` and `decodeRealtimeWebSocketFrame(data, options)` encode and decode Frontier realtime client/server message envelopes. The default transport frame is JSON text; `frameEncoding: "binary"` uses the compact binary protocol from `@shapeshift-labs/frontier-realtime/binary`.
 
 ### Client
 
-`createRealtimeWebSocketClient(options)` wraps a browser-compatible `WebSocket` constructor. It can auto-join a room, queue messages until open, send commands, reply to server pings with pongs, and deliver decoded server messages to subscribers.
+`createRealtimeWebSocketClient(options)` wraps a browser-compatible `WebSocket` constructor. It can auto-join a room, queue messages until open, send commands, resume sessions by passing `sessionId`/`resumeToken`, reply to server pings with pongs, and deliver decoded server messages to subscribers.
 
 ### Server
 
-`createRealtimeWebSocketServer(options)` uses Node `ws` and stays behind `./server`. It accepts joins, authenticates optional join contexts, binds sockets to structural realtime rooms, queues commands through `room.enqueue()`, and broadcasts per-client snapshots plus ack/reject messages when `server.step()` is called.
+`createRealtimeWebSocketServer(options)` uses Node `ws` and stays behind `./server`. It accepts joins, authenticates optional join contexts, binds sockets to structural realtime rooms, queues commands through `room.enqueue()`, and broadcasts per-client snapshots or optional deltas plus ack/reject messages when `server.step()` is called.
 
 ## Subpath Imports
 
@@ -114,6 +115,8 @@ This package intentionally owns only WebSocket transport:
 - Client-safe WebSocket adapter.
 - JSON/binary wire frame helpers for Frontier realtime messages.
 - Node `ws` server adapter for structural realtime rooms.
+- Reconnect/resume join metadata.
+- Optional per-client delta transport through a caller-provided `createDelta()` function.
 - Join, command, leave, ping, pong, snapshot, ack, and rejection transport.
 
 It does not own authoritative simulation, game entities, prediction/reconciliation, persistence, CRDT sync, rendering, physics, or anti-cheat policy. Those belong in lower/higher Frontier packages or application code.
@@ -146,10 +149,10 @@ Latest local package benchmark on Node v26.1.0, darwin arm64, 9 rounds:
 
 | Fixture | Median | p95 |
 | --- | ---: | ---: |
-| Encode/decode 128 JSON frames | 87.71 us | 88.58 us |
-| Encode/decode 128 binary frames | 75.94 us | 80.12 us |
-| Client queue/send 128 commands | 58.97 us | 60.00 us |
-| WebSocket server step, 1 room | 0.42 us | 0.50 us |
+| Encode/decode 128 JSON frames | 93.74 us | 96.59 us |
+| Encode/decode 128 binary frames | 93.69 us | 96.86 us |
+| Client queue/send 128 commands | 63.76 us | 66.49 us |
+| WebSocket server step, 1 room | 0.44 us | 0.49 us |
 
 These are Frontier-only package measurements, not competitor comparisons.
 

@@ -17,5 +17,6 @@ export type {
   RealtimeWebSocketFrameEncoding,
   RealtimeWebSocketLike,
   RealtimeWebSocketMessageCallback,
+  RealtimeWebSocketResumeOptions,
   RealtimeWebSocketUnsubscribe
 } from './types.js';

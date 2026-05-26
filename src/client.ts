@@ -47,10 +47,28 @@ export function createRealtimeWebSocketClient<TServerMessage extends RealtimeSer
       }
       sendNow(socket, message, options);
     },
-    join(roomId = options.roomId, clientId = options.clientId, token = options.token) {
+    join(
+      roomId = options.roomId,
+      clientId = options.clientId,
+      token = options.token,
+      resume = {
+        sessionId: options.sessionId,
+        resumeToken: options.resumeToken,
+        lastSeenTick: options.lastSeenTick
+      }
+    ) {
       if (!roomId) throw new TypeError('roomId is required');
       if (!clientId) throw new TypeError('clientId is required');
-      client.send({ version: 1, type: 'join', roomId, clientId, token });
+      client.send({
+        version: 1,
+        type: 'join',
+        roomId,
+        clientId,
+        token,
+        sessionId: resume.sessionId,
+        resumeToken: resume.resumeToken,
+        lastSeenTick: resume.lastSeenTick
+      });
     },
     command<TCommand extends RealtimeCommand>(command: TCommand, roomId?: RealtimeRoomId) {
       client.send({ version: 1, type: 'command', command, roomId });

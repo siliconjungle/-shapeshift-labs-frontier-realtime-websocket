@@ -25,7 +25,10 @@ for (let caseId = 0; caseId < cases; caseId++) {
   for (const message of messages) {
     const expected = JSON.parse(JSON.stringify(message));
     assert.deepStrictEqual(decodeRealtimeWebSocketFrame(encodeRealtimeWebSocketFrame(message)), expected);
-    assert.deepStrictEqual(decodeRealtimeWebSocketFrame(encodeRealtimeWebSocketFrame(message, { frameEncoding: 'binary' })), expected);
+    assert.deepStrictEqual(
+      JSON.parse(JSON.stringify(decodeRealtimeWebSocketFrame(encodeRealtimeWebSocketFrame(message, { frameEncoding: 'binary' })))),
+      expected
+    );
   }
 }
 

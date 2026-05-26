@@ -3,6 +3,7 @@ import type {
   RealtimeClientId,
   RealtimeClientMessage,
   RealtimeCommand,
+  RealtimeDelta,
   RealtimeRoomId,
   RealtimeServerMessage,
   RealtimeSnapshot
@@ -37,6 +38,9 @@ export interface RealtimeWebSocketClientOptions<TMessage extends RealtimeServerM
   readonly clientId?: RealtimeClientId;
   readonly roomId?: RealtimeRoomId;
   readonly token?: string;
+  readonly sessionId?: string;
+  readonly resumeToken?: string;
+  readonly lastSeenTick?: number;
   readonly autoJoin?: boolean;
   readonly frameEncoding?: RealtimeWebSocketFrameEncoding;
   readonly maxFrameBytes?: number;
@@ -51,7 +55,7 @@ export interface RealtimeWebSocketClient<TServerMessage extends RealtimeServerMe
   readonly ready: Promise<void>;
   readonly closed: boolean;
   send(message: RealtimeClientMessage): void;
-  join(roomId?: RealtimeRoomId, clientId?: RealtimeClientId, token?: string): void;
+  join(roomId?: RealtimeRoomId, clientId?: RealtimeClientId, token?: string, resume?: RealtimeWebSocketResumeOptions): void;
   command<TCommand extends RealtimeCommand>(command: TCommand, roomId?: RealtimeRoomId): void;
   leave(roomId?: RealtimeRoomId): void;
   pong(nonce?: string, timeMs?: number): void;
@@ -68,9 +72,15 @@ export interface RealtimeWebSocketEncodeOptions {
   readonly maxFrameBytes?: number;
 }
 
+export interface RealtimeWebSocketResumeOptions {
+  readonly sessionId?: string;
+  readonly resumeToken?: string;
+  readonly lastSeenTick?: number;
+}
+
 export interface RealtimeWebSocketRoomLike<TState = unknown, TCommand extends RealtimeCommand = RealtimeCommand, TClientSnapshot = TState> {
   readonly roomId: RealtimeRoomId;
-  join(clientId: RealtimeClientId): RealtimeServerMessage<TClientSnapshot>;
+  join(clientId: RealtimeClientId, options?: RealtimeWebSocketResumeOptions): RealtimeServerMessage<TClientSnapshot>;
   leave(clientId: RealtimeClientId): boolean;
   enqueue(command: TCommand): RealtimeWebSocketCommandEnqueueResult;
   step(count?: number): {
@@ -125,6 +135,11 @@ export interface RealtimeWebSocketServerOptions<TState = unknown, TCommand exten
   readonly heartbeatTimeoutMs?: number;
   readonly room?: RealtimeWebSocketRoomLike<TState, TCommand, TClientSnapshot>;
   readonly resolveRoom?: RealtimeWebSocketRoomResolver<TState, TCommand, TClientSnapshot>;
+  readonly createDelta?: (
+    previous: RealtimeSnapshot<TClientSnapshot>,
+    next: RealtimeSnapshot<TClientSnapshot>,
+    context: { readonly roomId: RealtimeRoomId; readonly clientId: RealtimeClientId }
+  ) => RealtimeDelta | null | undefined;
   readonly authenticate?: (context: RealtimeWebSocketServerAuthContext) => RealtimeWebSocketAuthResult | Promise<RealtimeWebSocketAuthResult>;
 }
 
@@ -138,6 +153,7 @@ export interface RealtimeWebSocketStepResult<TState = unknown, TClientSnapshot =
   readonly roomId: RealtimeRoomId;
   readonly snapshot: RealtimeSnapshot<TClientSnapshot>;
   readonly sent: number;
+  readonly deltas: number;
   readonly accepted: number;
   readonly rejected: number;
 }

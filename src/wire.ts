@@ -1,6 +1,9 @@
 import {
+  decodeRealtimeBinaryMessage,
   decodeRealtimeMessage,
+  encodeRealtimeBinaryMessage,
   encodeRealtimeMessage,
+  isRealtimeBinaryMessage,
   validateRealtimeMessageEnvelope
 } from '@shapeshift-labs/frontier-realtime';
 import { REALTIME_WEBSOCKET_DEFAULT_MAX_FRAME_BYTES } from './constants.js';
@@ -30,15 +33,24 @@ export function encodeRealtimeWebSocketFrame(
   options: RealtimeWebSocketEncodeOptions = {}
 ): string | Uint8Array {
   validateRealtimeMessageEnvelope(message);
+  if (options.frameEncoding === 'binary') {
+    const bytes = encodeRealtimeBinaryMessage(message);
+    assertMaxBytes(bytes.byteLength, options.maxFrameBytes);
+    return bytes;
+  }
   const json = encodeRealtimeMessage(message);
   assertMaxBytes(byteLength(json), options.maxFrameBytes);
-  return options.frameEncoding === 'binary' ? encoder.encode(json) : json;
+  return json;
 }
 
 export function decodeRealtimeWebSocketFrame(
   data: unknown,
   options: RealtimeWebSocketDecodeOptions = {}
 ): RealtimeWebSocketFrame {
+  if (isRealtimeBinaryMessage(data)) {
+    assertMaxBytes(realtimeWebSocketFrameBytes(data), options.maxFrameBytes);
+    return decodeRealtimeBinaryMessage(data as ArrayBuffer | ArrayBufferView);
+  }
   const json = decodeData(data, options.maxFrameBytes);
   return decodeRealtimeMessage(json);
 }

@@ -49,7 +49,7 @@ assert.strictEqual(encodeRealtimeWebSocketFrameSubpath, encodeRealtimeWebSocketF
   assert.deepStrictEqual(decodeRealtimeWebSocketFrame(encoded), join);
   const binary = encodeRealtimeWebSocketFrame(join, { frameEncoding: 'binary' });
   assert.ok(binary instanceof Uint8Array);
-  assert.deepStrictEqual(decodeRealtimeWebSocketFrame(binary), join);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(decodeRealtimeWebSocketFrame(binary))), join);
   assert.ok(realtimeWebSocketFrameBytes(encoded) > 0);
   assert.throws(() => encodeRealtimeWebSocketFrame(join, { maxFrameBytes: 4 }), RealtimeWebSocketFrameTooLargeError);
 }

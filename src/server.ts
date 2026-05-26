@@ -5,7 +5,8 @@ import type {
   RealtimeCommand,
   RealtimeCommandRejection,
   RealtimeRoomId,
-  RealtimeServerMessage
+  RealtimeServerMessage,
+  RealtimeSnapshot
 } from '@shapeshift-labs/frontier-realtime';
 import {
   REALTIME_WEBSOCKET_CLOSE_HEARTBEAT_TIMEOUT,
@@ -46,6 +47,7 @@ class FrontierRealtimeWebSocketServer<TState, TCommand extends RealtimeCommand, 
   private readonly wss: WsServer;
   private readonly rooms = new Map<string, RealtimeWebSocketRoomLike<TState, TCommand, TClientSnapshot>>();
   private readonly clients = new Map<string, Map<string, WebSocket>>();
+  private readonly lastSnapshots = new Map<string, Map<string, RealtimeSnapshot<TClientSnapshot>>>();
   private readonly peers = new Map<WebSocket, PeerSocket<TState, TCommand, TClientSnapshot>>();
   private readonly maxFrameBytes: number;
   private readonly maxBufferedAmount: number;
@@ -103,9 +105,21 @@ class FrontierRealtimeWebSocketServer<TState, TCommand extends RealtimeCommand, 
       if (!room) continue;
       const step = room.step(count);
       let sent = 0;
+      let deltas = 0;
       const sockets = this.clients.get(id);
       sockets?.forEach((socket, clientId) => {
-        sent += this.send(socket, { version: 1, type: 'snapshot', roomId: id, snapshot: room.snapshotFor(clientId) });
+        const snapshot = room.snapshotFor(clientId);
+        const previous = this.getLastSnapshot(id, clientId);
+        const delta = previous
+          ? this.options.createDelta?.(previous, snapshot, { roomId: id, clientId })
+          : null;
+        if (delta) {
+          sent += this.send(socket, { version: 1, type: 'delta', roomId: id, delta });
+          deltas++;
+        } else {
+          sent += this.send(socket, { version: 1, type: 'snapshot', roomId: id, snapshot });
+        }
+        this.setLastSnapshot(id, clientId, snapshot);
       });
       for (const ack of step.accepted) {
         const socket = this.clients.get(id)?.get(ack.clientId);
@@ -115,7 +129,7 @@ class FrontierRealtimeWebSocketServer<TState, TCommand extends RealtimeCommand, 
         const socket = this.clients.get(id)?.get(rejection.clientId);
         if (socket) sent += this.send(socket, { version: 1, type: 'command-reject', rejection });
       }
-      results.push({ roomId: id, snapshot: step.snapshot, sent, accepted: step.accepted.length, rejected: step.rejected.length });
+      results.push({ roomId: id, snapshot: step.snapshot, sent, deltas, accepted: step.accepted.length, rejected: step.rejected.length });
     }
     return results;
   }
@@ -206,7 +220,13 @@ class FrontierRealtimeWebSocketServer<TState, TCommand extends RealtimeCommand, 
     roomClients.set(message.clientId, socket);
     this.rooms.set(message.roomId, room);
     this.peers.set(socket, { socket, clientId: message.clientId, roomId: message.roomId, room, principal: auth.principal });
-    this.send(socket, room.join(message.clientId));
+    const welcome = room.join(message.clientId, {
+      sessionId: message.sessionId,
+      resumeToken: message.resumeToken,
+      lastSeenTick: message.lastSeenTick
+    });
+    if (welcome.type === 'welcome' && welcome.snapshot) this.setLastSnapshot(message.roomId, message.clientId, welcome.snapshot);
+    this.send(socket, welcome);
   }
 
   private async resolveRoom(roomId: string): Promise<RealtimeWebSocketRoomLike<TState, TCommand, TClientSnapshot> | null> {
@@ -227,7 +247,21 @@ class FrontierRealtimeWebSocketServer<TState, TCommand extends RealtimeCommand, 
       clients.delete(peer.clientId);
       if (clients.size === 0) this.clients.delete(peer.roomId);
     }
+    this.lastSnapshots.get(peer.roomId)?.delete(peer.clientId);
     peer.room.leave(peer.clientId);
+  }
+
+  private getLastSnapshot(roomId: string, clientId: string): RealtimeSnapshot<TClientSnapshot> | undefined {
+    return this.lastSnapshots.get(roomId)?.get(clientId);
+  }
+
+  private setLastSnapshot(roomId: string, clientId: string, snapshot: RealtimeSnapshot<TClientSnapshot>): void {
+    let roomSnapshots = this.lastSnapshots.get(roomId);
+    if (!roomSnapshots) {
+      roomSnapshots = new Map();
+      this.lastSnapshots.set(roomId, roomSnapshots);
+    }
+    roomSnapshots.set(clientId, snapshot);
   }
 
   private send(socket: WebSocket, message: RealtimeServerMessage): number {
