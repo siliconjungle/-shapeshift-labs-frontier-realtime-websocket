@@ -1,0 +1,11 @@
+{
+  "name": "@shapeshift-labs/frontier-realtime-websocket",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Reserved placeholder for Frontier realtime WebSocket transport.",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/siliconjungle/-shapeshift-labs-frontier-realtime-websocket.git"
+  },
+  "license": "MIT"
+}
