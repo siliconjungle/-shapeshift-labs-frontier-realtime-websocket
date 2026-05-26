@@ -1,11 +1,93 @@
 {
   "name": "@shapeshift-labs/frontier-realtime-websocket",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Reserved placeholder for Frontier realtime WebSocket transport.",
+  "version": "0.1.0",
+  "description": "WebSocket client, wire, and Node room-server transport for Frontier realtime.",
+  "type": "module",
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/siliconjungle/-shapeshift-labs-frontier-realtime-websocket.git"
   },
-  "license": "MIT"
+  "homepage": "https://github.com/siliconjungle/-shapeshift-labs-frontier-realtime-websocket#readme",
+  "bugs": {
+    "url": "https://github.com/siliconjungle/-shapeshift-labs-frontier-realtime-websocket/issues"
+  },
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "import": "./dist/client.js",
+      "default": "./dist/client.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./wire": {
+      "types": "./dist/wire.d.ts",
+      "import": "./dist/wire.js",
+      "default": "./dist/wire.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "client": [
+        "./dist/client.d.ts"
+      ],
+      "server": [
+        "./dist/server.d.ts"
+      ],
+      "wire": [
+        "./dist/wire.d.ts"
+      ],
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "benchmarks/package-bench.mjs"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@shapeshift-labs/frontier-realtime": "^0.1.0",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "typescript": "^6.0.3"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "npm run build && npm run typecheck && node test/smoke.mjs && node test/integration.mjs && node test/fuzz.mjs --cases 120 && node test/package-boundaries.mjs",
+    "integration": "npm run build && node test/integration.mjs",
+    "prepack": "npm run test",
+    "typecheck": "node typecheck.mjs",
+    "fuzz": "npm run build && node test/fuzz.mjs",
+    "bench": "npm run build && node benchmarks/package-bench.mjs",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "keywords": [
+    "frontier",
+    "realtime",
+    "websocket",
+    "multiplayer",
+    "transport",
+    "authoritative"
+  ]
 }
